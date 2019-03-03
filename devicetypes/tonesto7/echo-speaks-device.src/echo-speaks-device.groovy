@@ -15,8 +15,10 @@
 
 import groovy.json.*
 import java.text.SimpleDateFormat
-String devVersion()  { return "2.2.0"}
-String devModified() { return "2019-01-15" }
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+String devVersion()  { return "2.4.0"}
+String devModified() { return "2019-01-27" }
 Boolean isBeta()     { return false }
 Boolean isST()       { return (getPlatform() == "SmartThings") }
 
@@ -49,6 +51,7 @@ metadata {
         attribute "firmwareVer", "string"
         attribute "lastCmdSentDt", "string"
         attribute "lastSpeakCmd", "string"
+        attribute "lastSpokenToTime", "number"
         attribute "lastVoiceActivity", "string"
         attribute "lastUpdated", "string"
         attribute "musicSupported", "string"
@@ -56,6 +59,7 @@ metadata {
         attribute "reminderSupported", "string"
         attribute "supportedMusic", "string"
         attribute "trackImage", "string"
+        attribute "trackImageHtml", "string"
         attribute "ttsSupported", "string"
         attribute "volume", "number"
         attribute "volumeSupported", "string"
@@ -76,12 +80,17 @@ metadata {
         command "playSingASong", ["number", "number"]
         command "playFlashBrief", ["number", "number"]
         command "playFunFact", ["number", "number"]
-        command "playGoodMorning", ["number", "number"]
         command "playTraffic", ["number", "number"]
         command "playJoke", ["number", "number"]
         command "playTellStory", ["number", "number"]
-        command "playWelcomeHome", ["number", "number"]
-        command "playGoodNight", ["number", "number"]
+        command "sayGoodbye", ["number", "number"]
+        command "sayGoodNight", ["number", "number"]
+        command "sayBirthday", ["number", "number"]
+        command "sayCompliment", ["number", "number"]
+        command "sayGoodMorning", ["number", "number"]
+        command "sayWelcomeHome", ["number", "number"]
+        // command "playCannedRandomTts", ["string", "number", "number"]
+        // command "playCannedTts", ["string", "string", "number", "number"]
         command "playAnnouncement", ["string", "number", "number"]
         command "playAnnouncement", ["string", "string", "number", "number"]
         command "playAnnouncementAll", ["string", "string"]
@@ -96,8 +105,10 @@ metadata {
         command "searchIheart", ["string", "number", "number"]
         command "searchSiriusXm", ["string", "number", "number"]
         command "searchSpotify", ["string", "number", "number"]
+        // command "searchTidal", ["string", "number", "number"]
         command "searchTuneIn", ["string", "number", "number"]
         command "sendAlexaAppNotification", ["string"]
+        command "executeSequenceCommand", ["string"]
         command "executeRoutineId", ["string"]
         command "createAlarm", ["string", "string", "string"]
         command "createReminder", ["string", "string", "string"]
@@ -150,6 +161,10 @@ metadata {
             }
         }
         standardTile("deviceStatus", "device.deviceStatus", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
+            state("paused_unknown", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/unknown.png", backgroundColor: "#cccccc")
+            state("playing_unknown", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/unknown.png", backgroundColor: "#00a0dc")
+            state("stopped_unknown", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/unknown.png")
+
             state("paused_echo_gen1", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/echo_gen1.png", backgroundColor: "#cccccc")
             state("playing_echo_gen1", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/echo_gen1.png", backgroundColor: "#00a0dc")
             state("stopped_echo_gen1", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/echo_gen1.png")
@@ -241,6 +256,18 @@ metadata {
             state("paused_alexa_windows", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/alexa_windows.png", backgroundColor: "#cccccc")
             state("playing_alexa_windows", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/alexa_windows.png", backgroundColor: "#00a0dc")
             state("stopped_alexa_windows", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/alexa_windows.png")
+
+            state("paused_dash_wand", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/dash_wand.png", backgroundColor: "#cccccc")
+            state("playing_dash_wand", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/dash_wand.png", backgroundColor: "#00a0dc")
+            state("stopped_dash_wand", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/dash_wand.png")
+
+            state("paused_fabriq_chorus", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_chorus.png", backgroundColor: "#cccccc")
+            state("playing_fabriq_chorus", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_chorus.png", backgroundColor: "#00a0dc")
+            state("stopped_fabriq_chorus", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_chorus.png")
+
+            state("paused_fabriq_riff", label:"Paused", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_riff.png", backgroundColor: "#cccccc")
+            state("playing_fabriq_riff", label:"Playing", action:"music Player.pause", nextState: "paused", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_riff.png", backgroundColor: "#00a0dc")
+            state("stopped_fabriq_riff", label:"Stopped", action:"music Player.play", nextState: "playing", icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/fabriq_riff.png")
         }
         valueTile("blank1x1", "device.blank", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
             state("default", label:'')
@@ -317,8 +344,8 @@ metadata {
         standardTile("playFlashBrief", "playFlashBrief", height: 1, width: 1, decoration: "flat") {
             state("default", label:'', action: 'playFlashBrief', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/flash_brief.png")
         }
-        standardTile("playGoodMorning", "playGoodMorning", height: 1, width: 1, decoration: "flat") {
-            state("default", label:'', action: 'playGoodMorning', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/good_morning.png")
+        standardTile("sayGoodMorning", "sayGoodMorning", height: 1, width: 1, decoration: "flat") {
+            state("default", label:'', action: 'sayGoodMorning', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/good_morning.png")
         }
         standardTile("playTraffic", "playTraffic", height: 1, width: 1, decoration: "flat") {
             state("default", label:'', action: 'playTraffic', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/play_traffic.png")
@@ -341,11 +368,14 @@ metadata {
         standardTile("playCalendarNext", "playCalendarNext", height: 1, width: 1, decoration: "flat") {
             state("default", label:'', action: 'playCalendarNext', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/calendar_next.png")
         }
-        standardTile("playWelcomeHome", "playWelcomeHome", height: 1, width: 1, decoration: "flat") {
-            state("default", label:'', action: 'playWelcomeHome', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/welcome_home.png")
+        standardTile("sayWelcomeHome", "sayWelcomeHome", height: 1, width: 1, decoration: "flat") {
+            state("default", label:'', action: 'sayWelcomeHome', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/welcome_home.png")
         }
-        standardTile("playGoodNight", "playGoodNight", height: 1, width: 1, decoration: "flat") {
-            state("default", label:'', action: 'playGoodNight', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/good_night.png")
+        standardTile("sayGoodNight", "sayGoodNight", height: 1, width: 1, decoration: "flat") {
+            state("default", label:'', action: 'sayGoodNight', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/good_night.png")
+        }
+        standardTile("sayCompliment", "sayCompliment", height: 1, width: 1, decoration: "flat") {
+            state("default", label:'', action: 'sayCompliment', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/compliment.png")
         }
         standardTile("volumeUp", "volumeUp", height: 1, width: 1, decoration: "flat") {
             state("default", label:'', action: 'volumeUp', icon: "https://raw.githubusercontent.com/tonesto7/echo-speaks/master/resources/icons/device/volume_up.png")
@@ -371,7 +401,7 @@ metadata {
             "mediaMulti",
             "volumeUp", "volumeDown", "stopAllDevices", "doNotDisturb", "refresh", "disconnectBluetooth",
             "playWeather", "playSingASong", "playFlashBrief", "playTraffic", "playTellStory", "playFunFact",
-            "playJoke", "playWelcomeHome", "playGoodMorning", "playGoodNight", "resetQueue", "blank1x1",
+            "playJoke", "sayWelcomeHome", "sayGoodMorning", "sayGoodNight", "sayCompliment", "resetQueue",
             "playCalendarToday", "playCalendarTomorrow", "playCalendarNext", "speechTest", "sendTestAnnouncement", "sendTestAnnouncementAll",
             "currentAlbum", "currentStation",
             "alarmVolume",  "btDeviceConnected", "btDevicesPaired", "deviceStyle", "onlineStatus", "volumeSupported", "alexaWakeWord", "ttsSupported", "supportedMusic", "lastSpeakCmd", "lastCmdSentDt", "lastVoiceActivity"
@@ -382,6 +412,7 @@ metadata {
         section("Preferences") {
             input "showLogs", "bool", required: false, title: "Show Debug Logs?", defaultValue: false
             input "disableQueue", "bool", required: false, title: "Don't Allow Queuing?", defaultValue: false
+            input "disableTextTransform", "bool", required: false, title: "Disable Text Transform?", description: "This will attempt to convert items in text like temp units and directions like `WSW` to west southwest", defaultValue: false
         }
     }
 }
@@ -434,7 +465,10 @@ def getShortDevName(){
 
 public setAuthState(authenticated) {
     state?.authValid = (authenticated == true)
-    if(authenticated != true && state?.refreshScheduled) { unschedule("refreshData"); state?.refreshScheduled = false }
+    if(authenticated != true && state?.refreshScheduled) {
+        log.warn "Cookie Authentication Cleared by Parent.  Scheduled Refreshes also cancelled!"
+        unschedule("refreshData"); state?.refreshScheduled = false
+    }
 }
 
 Boolean isAuthOk() {
@@ -453,7 +487,8 @@ Boolean isCommandTypeAllowed(String type, noLogs=false) {
     if(!state?.cookie || !state?.cookie?.cookie || !state?.cookie?.csrf) { if(!noLogs) { log.warn "Amazon Cookie State Values Missing: ${state?.cookie}" }; return false }
     if(!state?.serialNumber) { if(!noLogs) { log.warn "SerialNumber State Value Missing: ${state?.serialNumber}" }; return false }
     if(!state?.deviceType) { if(!noLogs) { log.warn "DeviceType State Value Missing: ${state?.deviceType}" }; return false }
-    if(!state?.deviceOwnerCustomerId) { if(!noLogs) { log.warn "OwnerCustomerId State Value Missing: ${state?.deviceOwnerCustomerId}" }; return false }
+    if(!state?.deviceOwnerCustomerId) { if(!noLogs) { log.warn "OwnerCustomerId State Value Missing: ${state?.deviceOwnerCustomerId}" }; return false; }
+    if(state?.isSupportedDevice == false) { log.warn "You are using an Unsupported/Unknown Device all restrictions have been removed for testing! If commands function please report device info to developer"; return true; }
     if(!type || state?.permissions == null) { if(!noLogs) { log.warn "Permissions State Object Missing: ${state?.permissions}" }; return false }
     if(state?.doNotDisturb == true && (!(type in ["volumeControl", "alarms", "reminders", "doNotDisturb", "wakeWord", "bluetoothControl"]))) { if(!noLogs) { log.warn "All Voice Output Blocked... Do Not Disturb is ON" }; return false }
     if(state?.permissions?.containsKey(type) && state?.permissions[type] == true) { return true }
@@ -502,6 +537,9 @@ Boolean isCommandTypeAllowed(String type, noLogs=false) {
             case "siriusXm":
                 warnMsg = "OOPS... Sirius XM Radio is NOT Supported by this Device!!!"
                 break
+            // case "tidal":
+            //     warnMsg = "OOPS... Tidal Music is NOT Supported by this Device!!!"
+            //     break
             case "spotify":
                 warnMsg = "OOPS... Spotify is NOT Supported by this Device!!!"
                 break
@@ -538,6 +576,7 @@ void updateDeviceStatus(Map devData) {
             //         logger("debug", "$k: $v")
             //     }
             // }
+            state?.isSupportedDevice = (devData?.unsupported != true)
             state?.serialNumber = devData?.serialNumber
             state?.deviceType = devData?.deviceType
             state?.deviceOwnerCustomerId = devData?.deviceOwnerCustomerId
@@ -625,6 +664,13 @@ void refresh() {
     // refreshData()
 }
 
+public updateLabel(String lbl) {
+    if(lbl) {
+        log.trace "Updating Device Label to (${lbl})"
+        device?.setLlabel(lbl as String)
+    }
+}
+
 private triggerDataRrsh(parentRefresh=false) {
     if(parentRefresh) {
         runIn(4, "refresh", [overwrite: true])
@@ -646,7 +692,7 @@ public schedDataRefresh(frc) {
 private refreshData() {
     logger("trace", "refreshData()...")
     if(device?.currentValue("onlineStatus") != "online") {
-        log.warn "Skipping Device Data Refresh... Device is OFFLINE... (Offline Status Updated Every 10 Minutes)"
+        logger("warn", "Skipping Device Data Refresh... Device is OFFLINE... (Offline Status Updated Every 10 Minutes)")
         return
     }
     if(!isAuthOk()) {return}
@@ -671,19 +717,6 @@ private refreshData() {
     getDeviceActivity()
 }
 
-public updateServiceInfo(String svcHost, useHeroku=false) {
-    state?.serviceHost = svcHost
-    state?.useHeroku = useHeroku
-}
-
-public resetServiceInfo() {
-    logger("trace", "resetServiceInfo() received...")
-    resetQueue()
-    ["serviceHost", "useHeroku"]?.each { item->
-        state?.remove(item)
-    }
-}
-
 public setOnlineStatus(Boolean isOnline) {
     String onlStatus = (isOnline ? "online" : "offline")
     if(isStateChange(device, "DeviceWatch-DeviceStatus", onlStatus?.toString()) || isStateChange(device, "onlineStatus", onlStatus?.toString())) {
@@ -692,15 +725,12 @@ public setOnlineStatus(Boolean isOnline) {
     }
 }
 
-private respIsValid(response, String methodName, Boolean falseOnErr=false) {
-    Boolean hasErr = false
-    try {
-        hasErr = (response?.hasError() == true)
-    } catch (ex) { hasErr = true }
-    if(response?.getStatus() == 401) {
+private respIsValid(statusCode, Boolean hasErr, errMsg=null, String methodName, Boolean falseOnErr=false) {
+    statusCode = statusCode as Integer
+    if(statusCode == 401) {
         setAuthState(false)
         return false
-    } else { if(response?.getStatus() > 401 && response?.getStatus() < 500) { log.error "${methodName} Error: ${response?.getErrorMessage()}" } }
+    } else { if(statusCode > 401 && statusCode < 500) { log.error "${methodName} Error: ${errMsg ?: null}" } }
     if(hasErr && falseOnErr) { return false }
     return true
 }
@@ -709,11 +739,7 @@ private getPlaybackState() {
     execAsyncCmd("get", "getPlaybackStateHandler", [
         uri: getAmazonUrl(),
         path: "/api/np/player",
-        query: [
-            deviceSerialNumber: state?.serialNumber,
-            deviceType: state?.deviceType,
-            screenWidth: 2560
-        ],
+        query: [ deviceSerialNumber: state?.serialNumber, deviceType: state?.deviceType, screenWidth: 2560 ],
         headers: [cookie: getCookieVal(), csrf: getCsrfVal()],
         requestContentType: "application/json",
         contentType: "application/json",
@@ -721,12 +747,14 @@ private getPlaybackState() {
 }
 
 def getPlaybackStateHandler(response, data, isGroupResponse=false) {
-    if(!respIsValid(response, "getPlaybackStateHandler", true)) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getPlaybackStateHandler", true)) {return}
     try {} catch (ex) { }
-    // log.debug "response: ${response?.json}"
+    // log.debug "response: ${response?.getJson()}"
     def sData = [:]
     def isPlayStateChange = false
-    sData = response?.json
+    sData = response?.getJson() ?: null
     sData = sData?.playerInfo ?: [:]
     if (state?.isGroupPlaying && !isGroupResponse) {
         log.debug "ignoring getPlaybackState because group is playing here"
@@ -766,6 +794,9 @@ def getPlaybackStateHandler(response, data, isGroupResponse=false) {
     if(isStateChange(device, "trackImage", trackImg?.toString())) {
         sendEvent(name: "trackImage", value: trackImg?.toString(), descriptionText: "Track Image is ${trackImg}", display: false, displayed: false)
     }
+    if(isStateChange(device, "trackImageHtml", """<img src="${trackImg?.toString()}"/>""")) {
+        sendEvent(name: "trackImageHtml", value: """<img src="${trackImg?.toString()}"/>""", display: false, displayed: false)
+    }
 
     // Group response data never has valida data for volume
     if(!isGroupResponse && sData?.volume) {
@@ -804,9 +835,11 @@ private getAlarmVolume() {
 }
 
 def getAlarmVolumeHandler(response, data) {
-    if(!respIsValid(response, "getAlarmVolumeHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getAlarmVolumeHandler")) {return}
     try {} catch (ex) { }
-    def sData = response?.json
+    def sData = response?.getJson() ?: null
     logger("trace", "getAlarmVolume: $sData")
     if(isStateChange(device, "alarmVolume", (sData?.volumeLevel ?: 0)?.toString())) {
         log.trace "Alarm Volume Changed to ${(sData?.volumeLevel ?: 0)}"
@@ -825,9 +858,11 @@ private getWakeWord() {
 }
 
 def getWakeWordHandler(response, data) {
-    if(!respIsValid(response, "getWakeWordHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getWakeWordHandler", true)) {return}
     try {} catch (ex) { }
-    def sData = response?.json
+    def sData = response?.getJson() ?: null
     // log.debug "sData: $sData"
     def wakeWord = sData?.wakeWords?.find { it?.deviceSerialNumber == state?.serialNumber } ?: null
     logger("trace", "getWakeWord: ${wakeWord?.wakeWord}")
@@ -853,9 +888,11 @@ private getAvailableWakeWords() {
 }
 
 def getAvailableWakeWordsHandler(response, data) {
-    if(!respIsValid(response, "getAvailableWakeWordsHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getAvailableWakeWordsHandler", true)) {return}
     try {} catch (ex) { }
-    def sData = response?.json
+    def sData = response?.getJson() ?: null
     def wakeWords = sData?.wakeWords ?: []
     logger("trace", "getAvailableWakeWords: ${wakeWords}")
     if(isStateChange(device, "wakeWords", wakeWords?.toString())) {
@@ -874,11 +911,13 @@ private getBluetoothDevices() {
 }
 
 def getBluetoothHandler(response, data) {
-    if(!respIsValid(response, "getBluetoothHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getBluetoothHandler")) {return}
     try {} catch (ex) { }
     String curConnName = null
     Map btObjs = [:]
-    def rData = response?.getJson()
+    def rData = response?.getJson() ?: null
     def bluData = rData?.bluetoothStates?.size() ? rData?.bluetoothStates?.find { it?.deviceSerialNumber == state?.serialNumber } : null
     if(bluData?.size() && bluData?.pairedDeviceList && bluData?.pairedDeviceList?.size()) {
         def bData = bluData?.pairedDeviceList?.findAll { (it?.deviceClass != "GADGET") }
@@ -919,9 +958,11 @@ private getDoNotDisturb() {
 }
 
 def getDoNotDisturbHandler(response, data) {
-    if(!respIsValid(response, "getDoNotDisturbHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getDoNotDisturbHandler")) {return}
     try {} catch (ex) { }
-    def sData = response?.json
+    def sData = response?.getJson()
     def dndData = sData?.doNotDisturbDeviceStatusList?.size() ? sData?.doNotDisturbDeviceStatusList?.find { it?.deviceSerialNumber == state?.serialNumber } : [:]
     logger("trace", "getDoNotDisturb: $dndData")
     state?.doNotDisturb = (dndData?.enabled == true)
@@ -948,48 +989,16 @@ private getPlaylists() {
 }
 
 def getPlaylistsHandler(response, data) {
-    if(!respIsValid(response, "getPlaylistsHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getPlaylistsHandler")) {return}
     try {} catch (ex) { }
-    def sData = response?.json
+    def sData = response?.getJson() ?: [:]
     logger("trace", "getPlaylists: ${sData}")
     Map playlists = sData?.playlists ?: [:]
     if(isStateChange(device, "alexaPlaylists", playlists?.toString())) {
         log.trace "Alexa Playlists Changed to ${playlists}"
         sendEvent(name: "alexaPlaylists", value: playlists, display: false, displayed: false)
-    }
-}
-
-private getMusicProviders() {
-    execAsyncCmd("get", "getMusicProvidersHandler", [
-        uri: getAmazonUrl(),
-        path: "/api/behaviors/entities",
-        query: [ skillId: "amzn1.ask.1p.music" ],
-        headers: ["Routines-Version": "1.1.210292", cookie: getCookieVal(), csrf: getCsrfVal()],
-        requestContentType: "application/json",
-        contentType: "application/json"
-    ])
-}
-
-def getMusicProvidersHandler(response, data) {
-    if(!respIsValid(response, "getMusicProvidersHandler")) {return}
-    try {} catch (ex) { }
-    def sData = response?.json
-    logger("trace", "getMusicProviders: ${sData}")
-    Map items = [:]
-    if(sData?.size()) {
-        sData?.findAll { it?.availability == "AVAILABLE" }?.each { item->
-            items[item?.id] = item?.displayName
-        }
-        state?.permissions["appleMusic"] = (items?.containsKey("APPLE_MUSIC"))
-        state?.permissions["siriusXm"] = (items?.containsKey("SIRIUSXM"))
-    }
-    String lItems = items?.collect{ it?.value }?.sort()?.join(", ")
-    if(isStateChange(device, "supportedMusic", lItems?.toString())) {
-        sendEvent(name: "supportedMusic", value: lItems?.toString(), display: false, displayed: false)
-    }
-    if(isStateChange(device, "alexaMusicProviders", items?.toString())) {
-        // log.trace "Alexa Music Providers Changed to ${items}"
-        sendEvent(name: "alexaMusicProviders", value: items?.toString(), display: false, displayed: false)
     }
 }
 
@@ -1005,11 +1014,13 @@ private getNotifications() {
 }
 
 def getNotificationsHandler(response, data) {
-    if(!respIsValid(response, "getNotificationsHandler")) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "getNotificationsHandler")) {return}
     try {} catch (ex) { }
     List newList = []
-    if(response?.getStatus() == 200) {
-        def sData = response?.json
+    if(response?.status == 200) {
+        def sData = response?.getJson() ?: null
         if(sData) {
             List items = sData?.notifications ? sData?.notifications?.findAll { it?.status == "ON" && it?.deviceSerialNumber == state?.serialNumber} : []
             items?.each { item->
@@ -1018,11 +1029,11 @@ def getNotificationsHandler(response, data) {
                 newList?.push(li)
             }
         }
+        if(isStateChange(device, "alexaNotifications", newList?.toString())) {
+            sendEvent(name: "alexaNotifications", value: newList, display: false, displayed: false)
+        }
     }
     // log.trace "notifications: $newList"
-    if(isStateChange(device, "alexaNotifications", newList?.toString())) {
-        sendEvent(name: "alexaNotifications", value: newList, display: false, displayed: false)
-    }
 }
 
 private getDeviceActivity() {
@@ -1042,30 +1053,35 @@ private getDeviceActivity() {
 }
 
 def deviceActivityHandler(response, data) {
-    def sData = response?.json
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "deviceActivityHandler")) {return}
+    def sData = response?.getJson() ?: null
     Boolean wasLastDevice = false
-    String lastVoiceActivity = null
-    if (sData?.activities != null) {
+    def actTS = null
+    if (sData && sData?.activities != null) {
         def lastCommand = sData?.activities?.find {
             (it?.domainAttributes == null || it?.domainAttributes.startsWith("{")) &&
             it?.activityStatus.equals("SUCCESS") &&
             it?.utteranceId?.startsWith(it?.sourceDeviceIds?.deviceType)
         }
         if (lastCommand) {
-            def lastDescription = new groovy.json.JsonSlurper().parseText(lastCommand?.description)
+            def lastDescription = new JsonSlurper().parseText(lastCommand?.description)
             def spokenText = lastDescription?.summary
             def lastDevice = lastCommand?.sourceDeviceIds?.get(0)
             if(lastDevice?.serialNumber == state?.serialNumber) {
                 wasLastDevice = true
-                lastVoiceActivity = spokenText as String
+                if(isStateChange(device, "lastVoiceActivity", spokenText?.toString())) {
+                    sendEvent(name: "lastVoiceActivity", value: spokenText?.toString(), display: false, displayed: false)
+                }
+                if(isStateChange(device, "lastSpokenToTime", lastCommand?.creationTimestamp?.toString())) {
+                    sendEvent(name: "lastSpokenToTime", value: lastCommand?.creationTimestamp, display: false, displayed: false)
+                }
             }
         }
-    }
-    if(isStateChange(device, "lastVoiceActivity", lastVoiceActivity?.toString())) {
-        sendEvent(name: "lastVoiceActivity", value: lastVoiceActivity, display: false, displayed: false)
-    }
-    if(isStateChange(device, "wasLastSpokenToDevice", wasLastDevice?.toString())) {
-        sendEvent(name: "wasLastSpokenToDevice", value: wasLastDevice, display: false, displayed: false)
+        if(isStateChange(device, "wasLastSpokenToDevice", wasLastDevice?.toString())) {
+            sendEvent(name: "wasLastSpokenToDevice", value: wasLastDevice, display: false, displayed: false)
+        }
     }
 }
 
@@ -1111,34 +1127,18 @@ private sendAmazonCommand(String method, Map params, Map otherData=null) {
 }
 
 def amazonCommandResp(response, data) {
-    if(!respIsValid(response, "amazonCommandResp", true)) {return}
+    Boolean hasErr = (response?.hasError() == true)
+    if(hasErr) log.debug "hasError: $hasErr | status: ${response?.status}"
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    if(!respIsValid(response?.status, hasErr, errMsg, "amazonCommandResp", true)) {return}
     try {} catch (ex) { }
-    def resp = response?.data ? response?.json : null
-    // logger("warn", "amazonCommandResp | Status: (${response?.getStatus()}) | Response: ${resp} | PassThru-Data: ${data}")
-    if(response?.getStatus() == 200) {
-        if(data?.cmdDesc?.startsWith("PlayMusicValidate")) {
-            if (resp?.result != "VALID") {
-                log.error "Amazon the Music Search Request as Invalid | MusicProvider: [${data?.validObj?.operationPayload?.musicProviderId}] | Search Phrase: (${data?.validObj?.operationPayload?.searchPhrase})"
-                return
-            }
-            data?.validObj?.operationPayload = resp?.operationPayload
-            Map seqJson = ["@type": "com.amazon.alexa.behaviors.model.Sequence", "startNode": data?.validObj]
-            seqJson?.startNode["@type"] = "com.amazon.alexa.behaviors.model.OpaquePayloadOperationNode"
-            if(data?.volume) {
-                sendMultiSequenceCommand([[command: data?.validObj], [command: "volume", value: data?.volume]], true)
-            } else {
-                sendSequenceCommand("PlayMusic | Provider: ${data?.validObj?.operationPayload?.musicProviderId}", seqJson, null)
-            }
-        } else if (data?.cmdDesc?.startsWith("connectBluetooth") || data?.cmdDesc?.startsWith("disconnectBluetooth") || data?.cmdDesc?.startsWith("removeBluetooth")) {
+    def resp = response?.data ? response?.getJson() : null
+    if(response?.status == 200) {
+        if (data?.cmdDesc?.startsWith("connectBluetooth") || data?.cmdDesc?.startsWith("disconnectBluetooth") || data?.cmdDesc?.startsWith("removeBluetooth")) {
             triggerDataRrsh()
-            log.trace "amazonCommandResp | Status: (${response?.getStatus()}) | Response: ${resp} | ${data?.cmdDesc} was Successfully Sent!!!"
-        } else if(data?.cmdDesc?.startsWith("renameDevice")) {
-            triggerDataRrsh(true)
-            log.trace "amazonCommandResp | Status: (${response?.getStatus()}) | Response: ${resp} | ${data?.cmdDesc} was Successfully Sent!!!"
-        } else {
-            log.trace "amazonCommandResp | Status: (${response?.getStatus()}) | Response: ${resp} | ${data?.cmdDesc} was Successfully Sent!!!"
-        }
-    }
+        } else if(data?.cmdDesc?.startsWith("renameDevice")) { triggerDataRrsh(true) }
+        log.trace "amazonCommandResp | Status: (${response?.status})${resp != null ? " | Response: ${resp}" : ""} | ${data?.cmdDesc} was Successfully Sent!!!"
+    } else { logger("warn", "amazonCommandResp | Status: (${response?.status}) | Response: ${resp} | PassThru-Data: ${data}") }
 }
 
 private sendSequenceCommand(type, command, value) {
@@ -1150,11 +1150,11 @@ private sendSequenceCommand(type, command, value) {
         headers: [cookie: getCookieVal(), csrf: getCsrfVal()],
         requestContentType: "application/json",
         contentType: "application/json",
-        body: seqObj
+        body: new JsonOutput().toJson(seqObj)
     ], [cmdDesc: "SequenceCommand (${type})"])
 }
 
-private sendMultiSequenceCommand(commands, parallel=false) {
+private sendMultiSequenceCommand(commands, String srcDesc, Boolean parallel=false) {
     String seqType = parallel ? "ParallelNode" : "SerialNode"
     List nodeList = []
     commands?.each { cmdItem->
@@ -1163,7 +1163,7 @@ private sendMultiSequenceCommand(commands, parallel=false) {
         } else { nodeList?.push(createSequenceNode(cmdItem?.command, cmdItem?.value)) }
      }
     Map seqJson = [ "sequence": [ "@type": "com.amazon.alexa.behaviors.model.Sequence", "startNode": [ "@type": "com.amazon.alexa.behaviors.model.${seqType}", "name": null, "nodesToExecute": nodeList ] ] ]
-    sendSequenceCommand("MultiSequence(${seqType})", seqJson, null)
+    sendSequenceCommand("${srcDesc} | MultiSequence: ${parallel ? "Parallel" : "Sequential"}", seqJson, null)
 }
 
 def searchTest() {
@@ -1200,7 +1200,6 @@ def pause() {
         }
         triggerDataRrsh()
     }
-
 }
 
 def stop() {
@@ -1408,15 +1407,58 @@ private restoreLastVolume() {
     } else { log.warn "Unable to restore Last Volume!!! lastVolume State Value not found..." }
 }
 
-def speak(String msg) {
-    logger("trace", "speak() command received...")
-    if(isCommandTypeAllowed("TTS")) {
-        if(!msg) { log.warn "No Message sent with speak($msg) command" }
-        // log.trace "speak(${msg?.toString()?.length() > 200 ? msg?.take(200)?.trim() +"..." : msg})"
-        if(msg?.toString()?.length() > 450) { log.warn "TTS Message Length is Too Long!!! | Current Length (${msg?.toString()?.length()})"; return; }
-        speakVolumeCmd([cmdDesc: "SpeakCommand", message: msg as String, newVolume: (state?.useThisVolume ?: null), oldVolume: (state?.lastVolume ?: null), cmdDt: now()])
-        incrementCntByKey("use_cnt_speak")
-    }
+def sayWelcomeHome(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "iamhome"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayWelcomeHome")
+    } else { doSequenceCmd("sayWelcomeHome", "cannedtts_random", "iamhome") }
+    incrementCntByKey("use_cnt_sayWelcomeHome")
+}
+
+def sayCompliment(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "compliments"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayCompliment")
+    } else { doSequenceCmd("sayCompliment", "cannedtts_random", "compliments") }
+    incrementCntByKey("use_cnt_sayCompliment")
+}
+
+def sayBirthday(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "birthday"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayBirthday")
+    } else { doSequenceCmd("sayBirthday", "cannedtts_random", "birthday") }
+    incrementCntByKey("use_cnt_sayBirthday")
+}
+
+def sayGoodNight(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "goodnight"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayGoodNight")
+    } else { doSequenceCmd("sayGoodNight", "cannedtts_random", "goodnight") }
+    incrementCntByKey("use_cnt_sayGoodNight")
+}
+
+def sayGoodMorning(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "goodmorning"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayGoodMorning")
+    } else { doSequenceCmd("sayGoodMorning", "cannedtts_random", "goodmorning") }
+    incrementCntByKey("use_cnt_sayGoodMorning")
+}
+
+def sayGoodbye(volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: "goodbye"]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "sayGoodbye")
+    } else { doSequenceCmd("sayGoodbye", "cannedtts_random", "goodbye") }
+    incrementCntByKey("use_cnt_sayGoodbye")
 }
 
 def executeRoutineId(String rId) {
@@ -1433,8 +1475,8 @@ def playWeather(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "weather"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("WeatherCommand", "weather") }
+        sendMultiSequenceCommand(seqs, "playWeather")
+    } else { doSequenceCmd("playWeather", "weather") }
     incrementCntByKey("use_cnt_playWeather")
 }
 
@@ -1442,8 +1484,8 @@ def playTraffic(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "traffic"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("TrafficCommand", "traffic") }
+        sendMultiSequenceCommand(seqs, "playTraffic")
+    } else { doSequenceCmd("playTraffic", "traffic") }
     incrementCntByKey("use_cnt_playTraffic")
 }
 
@@ -1451,8 +1493,8 @@ def playSingASong(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "singasong"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("SingCommand", "singasong") }
+        sendMultiSequenceCommand(seqs, "playSingASong")
+    } else { doSequenceCmd("playSingASong", "singasong") }
     incrementCntByKey("use_cnt_playSong")
 }
 
@@ -1461,45 +1503,18 @@ def playFlashBrief(volume=null, restoreVolume=null) {
         if(volume != null) {
             List seqs = [[command: "volume", value: volume], [command: "flashbriefing"]]
             if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-            sendMultiSequenceCommand(seqs)
-        } else { doSequenceCmd("FlashCommand", "flashbriefing") }
+            sendMultiSequenceCommand(seqs, "playFlashBrief")
+        } else { doSequenceCmd("playFlashBrief", "flashbriefing") }
         incrementCntByKey("use_cnt_playBrief")
     }
-}
-
-def playWelcomeHome(volume=null, restoreVolume=null) {
-    if(volume != null) {
-        List seqs = [[command: "volume", value: volume], [command: "welcomehomerandom"]]
-        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("WelcomeHomeCommand", "welcomehomerandom") }
-    incrementCntByKey("use_cnt_playWelcomeHome")
-}
-
-def playGoodNight(volume=null, restoreVolume=null) {
-    if(volume != null) {
-        List seqs = [[command: "volume", value: volume], [command: "goodnight"]]
-        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("GoodNightCommand", "goodnight") }
-    incrementCntByKey("use_cnt_playGoodNight")
-}
-
-def playGoodMorning(volume=null, restoreVolume=null) {
-    if(volume != null) {
-        List seqs = [[command: "volume", value: volume], [command: "goodmorning"]]
-        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("GoodMorningCommand", "goodmorning") }
-    incrementCntByKey("use_cnt_playGoodMorning")
 }
 
 def playTellStory(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "tellstory"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("StoryCommand", "tellstory") }
+        sendMultiSequenceCommand(seqs, "playTellStory")
+    } else { doSequenceCmd("playTellStory", "tellstory") }
     incrementCntByKey("use_cnt_playStory")
 }
 
@@ -1507,8 +1522,8 @@ def playFunFact(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "funfact"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("FunFactCommand", "funfact") }
+        sendMultiSequenceCommand(seqs, "playFunFact")
+    } else { doSequenceCmd("playFunFact", "funfact") }
     incrementCntByKey("use_cnt_funfact")
 }
 
@@ -1516,8 +1531,8 @@ def playJoke(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "joke"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("JokeCommand", "joke") }
+        sendMultiSequenceCommand(seqs, "playJoke")
+    } else { doSequenceCmd("playJoke", "joke") }
     incrementCntByKey("use_cnt_joke")
 }
 
@@ -1525,8 +1540,8 @@ def playCalendarToday(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "calendartoday"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("CalendarTodayCommand", "calendartoday") }
+        sendMultiSequenceCommand(seqs, "playCalendarToday")
+    } else { doSequenceCmd("playCalendarToday", "calendartoday") }
     incrementCntByKey("use_cnt_calendarToday")
 }
 
@@ -1534,8 +1549,8 @@ def playCalendarTomorrow(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "calendartomorrow"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("CalendarTomorrowCommand", "calendartomorrow") }
+        sendMultiSequenceCommand(seqs, "playCalendarTomorrow")
+    } else { doSequenceCmd("playCalendarTomorrow", "calendartomorrow") }
     incrementCntByKey("use_cnt_calendarTomorrow")
 }
 
@@ -1543,17 +1558,26 @@ def playCalendarNext(volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "calendarnext"]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("CalendarNextCommand", "calendarnext") }
+        sendMultiSequenceCommand(seqs, "playCalendarNext")
+    } else { doSequenceCmd("playCalendarNext", "calendarnext") }
     incrementCntByKey("use_cnt_calendarNext")
+}
+
+def playCannedRandomTts(String type, volume=null, restoreVolume=null) {
+    if(volume != null) {
+        List seqs = [[command: "volume", value: volume], [command: "cannedtts_random", value: type]]
+        if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
+        sendMultiSequenceCommand(seqs, "playCannedRandomTts($type)")
+    } else { doSequenceCmd("playCannedRandomTts($type)", "cannedtts_random", type) }
+    incrementCntByKey("use_cnt_playCannedRandomTTS")
 }
 
 def playAnnouncement(String msg, volume=null, restoreVolume=null) {
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "announcement", value: msg]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("Announcement", "announcement", msg) }
+        sendMultiSequenceCommand(seqs, "playAnnouncement")
+    } else { doSequenceCmd("playAnnouncement", "announcement", msg) }
     incrementCntByKey("use_cnt_announcement")
 }
 
@@ -1562,8 +1586,8 @@ def playAnnouncement(String msg, String title, volume=null, restoreVolume=null) 
     if(volume != null) {
         List seqs = [[command: "volume", value: volume], [command: "announcement", value: msg]]
         if(restoreVolume != null) { seqs?.push([command: "volume", value: restoreVolume]) }
-        sendMultiSequenceCommand(seqs)
-    } else { doSequenceCmd("Announcement", "announcement", msg) }
+        sendMultiSequenceCommand(seqs, "playAnnouncement")
+    } else { doSequenceCmd("playAnnouncement", "announcement", msg) }
     incrementCntByKey("use_cnt_announcement")
 }
 
@@ -1577,9 +1601,7 @@ def searchMusic(String searchPhrase, String providerId, volume=null, sleepSecond
     // log.trace "searchMusic(${searchPhrase}, ${providerId})"
     if(isCommandTypeAllowed(getCommandTypeForProvider(providerId))) {
         doSearchMusicCmd(searchPhrase, providerId, volume, sleepSeconds)
-    } else {
-        log.warn "searchMusic not supported for ${providerId}"
-    }
+    } else { log.warn "searchMusic not supported for ${providerId}" }
 }
 
 String getCommandTypeForProvider(String providerId) {
@@ -1603,6 +1625,9 @@ String getCommandTypeForProvider(String providerId) {
         case "SPOTIFY":
             commandType = "spotify"
             break
+        // case "TIDAL":
+        //     commandType = "tidal"
+        //     break
         case "I_HEART_RADIO":
             commandType = "iHeartRadio"
             break
@@ -1613,49 +1638,56 @@ String getCommandTypeForProvider(String providerId) {
 def searchAmazonMusic(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("amazonMusic")) {
         doSearchMusicCmd(searchPhrase, "AMAZON_MUSIC", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchAmazon")
+        incrementCntByKey("use_cnt_searchAmazonMusic")
     }
 }
 
 def searchAppleMusic(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("appleMusic")) {
         doSearchMusicCmd(searchPhrase, "APPLE_MUSIC", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchApple")
+        incrementCntByKey("use_cnt_searchAppleMusic")
     }
 }
 
 def searchTuneIn(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("tuneInRadio")) {
         doSearchMusicCmd(searchPhrase, "TUNEIN", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchTuneIn")
+        incrementCntByKey("use_cnt_searchTuneInRadio")
     }
 }
 
 def searchPandora(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("pandoraRadio")) {
         doSearchMusicCmd(searchPhrase, "PANDORA", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchPandora")
+        incrementCntByKey("use_cnt_searchPandoraRadio")
     }
 }
 
 def searchSiriusXm(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("siriusXm")) {
         doSearchMusicCmd(searchPhrase, "SIRIUSXM", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchSiriusXM")
+        incrementCntByKey("use_cnt_searchSiriusXmRadio")
     }
 }
 
 def searchSpotify(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("spotify")) {
         doSearchMusicCmd(searchPhrase, "SPOTIFY", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchSpotify")
+        incrementCntByKey("use_cnt_searchSpotifyMusic")
     }
 }
+
+// def searchTidal(String searchPhrase, volume=null, sleepSeconds=null) {
+//     if(isCommandTypeAllowed("tidal")) {
+//         doSearchMusicCmd(searchPhrase, "TIDAL", volume, sleepSeconds)
+//         incrementCntByKey("use_cnt_searchTidal")
+//     }
+// }
 
 def searchIheart(String searchPhrase, volume=null, sleepSeconds=null) {
     if(isCommandTypeAllowed("iHeartRadio")) {
         doSearchMusicCmd(searchPhrase, "I_HEART_RADIO", volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchIheart")
+        incrementCntByKey("use_cnt_searchIheartRadio")
     }
 }
 
@@ -1669,13 +1701,11 @@ private doSequenceCmd(cmdType, seqCmd, seqVal="") {
 private doSearchMusicCmd(searchPhrase, musicProvId, volume=null, sleepSeconds=null) {
     if(state?.serialNumber && searchPhrase && musicProvId) {
         playMusicProvider(searchPhrase, musicProvId, volume, sleepSeconds)
-        incrementCntByKey("use_cnt_searchMusic")
+        // incrementCntByKey("use_cnt_searchMusic")
     } else { log.warn "doSearchMusicCmd Error | You are missing one of the following... SerialNumber: ${state?.serialNumber} | searchPhrase: ${searchPhrase} | musicProvider: ${musicProvId}" }
 }
 
-private playMusicProvider(searchPhrase, providerId, volume=null, sleepSeconds=null) {
-    logger("trace", "playMusicProvider() command received... | searchPhrase: $searchPhrase | providerId: $providerId | sleepSeconds: $sleepSeconds")
-    if (options?.searchPhrase == "") { log.error 'PlayMusicProvider Searchphrase empty'; return; }
+private Map validateMusicSearch(searchPhrase, providerId, sleepSeconds=null) {
     Map validObj = [
         type: "Alexa.Music.PlaySearchPhrase",
         operationPayload: [
@@ -1689,14 +1719,49 @@ private playMusicProvider(searchPhrase, providerId, volume=null, sleepSeconds=nu
     ]
     if(sleepSeconds) { validObj?.operationPayload?.waitTimeInSeconds = sleepSeconds }
     validObj?.operationPayload = new JsonOutput().toJson(validObj?.operationPayload)
-    sendAmazonCommand("post", [
+    Map params = [
         uri: getAmazonUrl(),
         path: "/api/behaviors/operation/validate",
         headers: [cookie: getCookieVal(), csrf: getCsrfVal()],
         requestContentType: "application/json",
         contentType: "application/json",
-        body: validObj
-    ], [cmdDesc: "PlayMusicValidate(${providerId})", validObj: validObj, volume: volume])
+        body: new JsonOutput().toJson(validObj)
+    ]
+    Map result = null
+    httpPost(params) { resp->
+        Map rData = resp?.data ?: null
+        if(resp?.status == 200) {
+            if (rData?.result != "VALID") {
+                log.error "Amazon the Music Search Request as Invalid | MusicProvider: [${providerId}] | Search Phrase: (${searchPhrase})"
+                result = null
+            } else { result = rData }
+        } else { log.error "validateMusicSearch Request failed with status: (${resp?.status}) | MusicProvider: [${providerId}] | Search Phrase: (${searchPhrase})" }
+    }
+    return result
+}
+
+private getMusicSearchObj(String searchPhrase, String providerId, sleepSeconds=null) {
+    if (searchPhrase == "") { log.error 'getMusicSearchObj Searchphrase empty'; return; }
+    Map validObj = [type: "Alexa.Music.PlaySearchPhrase", "@type": "com.amazon.alexa.behaviors.model.OpaquePayloadOperationNode"]
+    Map validResp = validateMusicSearch(searchPhrase, providerId, sleepSeconds)
+    if(validResp && validResp?.operationPayload) {
+        validObj?.operationPayload = validResp?.operationPayload
+    } else {
+        log.error "Something went wrong with the Music Search | MusicProvider: [${providerId}] | Search Phrase: (${searchPhrase})"
+        validObj = null
+    }
+    return validObj
+}
+
+private playMusicProvider(searchPhrase, providerId, volume=null, sleepSeconds=null) {
+    logger("trace", "playMusicProvider() command received... | searchPhrase: $searchPhrase | providerId: $providerId | sleepSeconds: $sleepSeconds")
+    Map validObj = getMusicSearchObj(searchPhrase, providerId, sleepSeconds)
+    if(!validObj) { return }
+    Map seqJson = ["@type": "com.amazon.alexa.behaviors.model.Sequence", "startNode": validObj]
+        seqJson?.startNode["@type"] = "com.amazon.alexa.behaviors.model.OpaquePayloadOperationNode"
+    if(volume) {
+        sendMultiSequenceCommand([ [command: "volume", value: volume], [command: validObj] ], "playMusicProvider(${providerId})", true)
+    } else { sendSequenceCommand("playMusicProvider(${providerId})", seqJson, null) }
 }
 
 def setWakeWord(String newWord) {
@@ -1955,6 +2020,60 @@ def speechTest(ttsMsg) {
     speak(ttsMsg as String)
 }
 
+def speak(String msg) {
+    logger("trace", "speak() command received...")
+    if(isCommandTypeAllowed("TTS")) {
+        if(!msg) { log.warn "No Message sent with speak($msg) command" }
+        // msg = cleanString(msg, true)
+        speakVolumeCmd([cmdDesc: "SpeakCommand", message: msg, newVolume: (state?.useThisVolume ?: null), oldVolume: (state?.lastVolume ?: null), cmdDt: now()])
+        incrementCntByKey("use_cnt_speak")
+    }
+}
+
+String cleanString(str, frcTrans=false) {
+    if(!str) { return null }
+    //Cleans up characters from message
+    str?.replaceAll(~/[^a-zA-Z0-9-?%°., ]+/, "")?.replaceAll(/\s\s+/, " ")
+    str = textTransform(str, frcTrans)
+    // log.debug "cleanString: $str"
+    return str
+}
+
+private String textTransform(String str, force=false) {
+    if(!force && settings?.disableTextTransform == true) { return str; }
+    // Converts F temp values to readable text "19F"
+    str = str?.replaceAll(/([+-]?\d+)\s?([CcFf])/) { return "${it[0]?.toString()?.replaceAll("[-]", "minus ")?.replaceAll("[FfCc]", " degrees")}" }
+    str = str?.replaceAll(/(\sWSW\s)/, " west southwest ")?.replaceAll(/(\sWNW\s)/, " west northwest ")?.replaceAll(/(\sESE\s)/, " east southeast ")?.replaceAll(/(\sENE\s)/, " east northeast ")
+    str = str?.replaceAll(/(\sSSE\s)/, " south southeast ")?.replaceAll(/(\sSSW\s)/, " south southwest ")?.replaceAll(/(\sNNE\s)/, " north northeast ")?.replaceAll(/(\sNNW\s)/, " north northwest ")
+    str = str?.replaceAll(/(\sNW\s)/, " northwest ")?.replaceAll(/(\sNE\s)/, " northeast ")?.replaceAll(/(\sSW\s)/, " southwest ")?.replaceAll(/(\sSE\s)/, " southeast ")
+    str = str?.replaceAll(/(\sE\s)/," east ")?.replaceAll(/(\sS\s)/," south ")?.replaceAll(/(\sN\s)/," north ")?.replaceAll(/(\sW\s)/," west ")
+    str = str?.replaceAll("%"," percent ")
+    str = str?.replaceAll("°"," degree ")
+    return str
+}
+
+Integer getStringLen(str) { return (str && str?.toString()?.length()) ? str?.toString()?.length() : 0 }
+
+private List msgSeqBuilder(String str) {
+    // log.debug "msgSeqBuilder: $str"
+    List seqCmds = []
+    List strArr = []
+    if(str?.toString()?.length() < 450) {
+        seqCmds?.push([command: "speak", value: str as String])
+    } else {
+        List msgItems = str?.split()
+        msgItems?.each { wd->
+            if((getStringLen(strArr?.join(" ")) + wd?.length()) <= 430) {
+                // log.debug "CurArrLen: ${(getStringLen(strArr?.join(" ")))} | CurStrLen: (${wd?.length()})"
+                strArr?.push(wd as String)
+            } else { seqCmds?.push([command: "speak", value: strArr?.join(" ")]); strArr = []; strArr?.push(wd as String); }
+            if(wd == msgItems?.last()) { seqCmds?.push([command: "speak", value: strArr?.join(" ")]) }
+        }
+    }
+    // log.debug "seqCmds: $seqCmds"
+    return seqCmds
+}
+
 def sendTestAnnouncement() {
     playAnnouncement("Test announcement from device")
 }
@@ -1963,13 +2082,79 @@ def sendTestAnnouncementAll() {
     playAnnouncementAll("Test announcement to all devices")
 }
 
+Map seqItemsAvail() {
+    return [
+        other: [
+            "weather":null, "traffic":null, "flashbriefing":null, "goodmorning":null, "goodnight":null, "cleanup":null,
+            "singasong":null, "tellstory":null, "funfact":null, "joke":null, "playsearch":null, "calendartoday":null,
+            "calendartomorrow":null, "calendarnext":null, "stop":null, "stopalldevices":null,
+            "dnd_duration": "2H30M", "dnd_time": "00:30", "dnd_all_duration": "2H30M", "dnd_all_time": "00:30",
+            "dnd_duration":"2H30M", "dnd_time":"00:30",
+            "cannedtts_random": ["goodbye", "confirmations", "goodmorning", "compliments", "birthday", "goodnight", "iamhome"],
+            "wait": "value (seconds)", "volume": "value (0-100)", "speak": "message", "announcement": "message",
+            "announcementall": "message", "pushnotification": "message"
+        ],
+        music: [
+            "amazonmusic": "AMAZON_MUSIC", "applemusic": "APPLE_MUSIC", "iheartradio": "I_HEART_RADIO", "pandora": "PANDORA",
+            "spotify": "SPOTIFY", "tunein": "TUNEIN", "cloudplayer": "CLOUDPLAYER"
+        ],
+        musicAlt: [
+            "amazonmusic": "amazonMusic", "applemusic": "appleMusic", "iheartradio": "iHeartRadio", "pandora": "pandoraRadio",
+            "spotify": "spotify", "tunein": "tuneInRadio", "cloudplayer": "cloudPlayer"
+        ]
+    ]
+}
+
+def executeSequenceCommand(String seqStr) {
+    if(seqStr) {
+        List seqList = seqStr?.split(",,")
+        log.debug "seqList: ${seqList}"
+        List seqItems = []
+        if(seqList?.size()) {
+            seqList?.each {
+                def li = it?.toString()?.split("::")
+                // log.debug "li: $li"
+                if(li?.size()) {
+                    String cmd = li[0]?.trim()?.toString()?.toLowerCase() as String
+                    Boolean isValidCmd = (seqItemsAvail()?.other?.containsKey(cmd) || (seqItemsAvail()?.music?.containsKey(cmd)))
+                    Boolean isMusicCmd = (seqItemsAvail()?.music?.containsKey(cmd) && !seqItemsAvail()?.other?.containsKey(cmd))
+                    // log.debug "cmd: $cmd | isValidCmd: $isValidCmd | isMusicCmd: $isMusicCmd"
+
+                    if(!isValidCmd) { log.warn "executeSequenceCommand command ($cmd) is not a valid sequence command!!!"; return; }
+
+                    if(isMusicCmd) {
+                        List valObj = (li[1]?.trim()?.toString()?.contains("::")) ? li[1]?.trim()?.split("::") : [li[1]?.trim() as String]
+                        String provID = seqItemsAvail()?.music[cmd]
+                        if(!isCommandTypeAllowed(seqItemsAvail()?.musicAlt[cmd])) { log.warn "Current Music Sequence command ($cmd) not allowed... "; return; }
+                        if (!valObj || valObj[0] == "") { log.error 'Play Music Sequence it Searchphrase empty'; return; }
+                        Map validObj = getMusicSearchObj(valObj[0], provID, valObj[1] ?: null)
+                        if(!validObj) { return }
+                        seqItems?.push([command: validObj])
+                    } else {
+                        if(li?.size() == 1) {
+                            seqItems?.push([command: cmd])
+                        } else if(li?.size() == 2) {
+                            seqItems?.push([command: cmd, value: li[1]?.trim()])
+                        }
+                    }
+                }
+            }
+        }
+        logger("debug", "executeSequenceCommand Items: $seqItems | seqStr: ${seqStr}")
+        if(seqItems?.size()) {
+            sendMultiSequenceCommand(seqItems, "executeSequenceCommand")
+            incrementCntByKey("use_cnt_executeSequenceCommand")
+        }
+    }
+}
+
 /*******************************************************************
             Speech Queue Logic
 *******************************************************************/
 
 Integer getRecheckDelay(Integer msgLen=null, addRandom=false) {
     def random = new Random()
-	Integer randomInt = random?.nextInt(5) //Was using 7
+    Integer randomInt = random?.nextInt(5) //Was using 7
     if(!msgLen) { return 30 }
     def v = (msgLen <= 14 ? 1 : (msgLen / 14)) as Integer
     // logger("trace", "getRecheckDelay($msgLen) | delay: $v + $randomInt")
@@ -2116,7 +2301,7 @@ void processCmdQueue() {
 }
 
 Integer getAdjCmdDelay(elap, reqDelay) {
-    if(elap && reqDelay) {
+    if(elap != null && reqDelay) {
         Integer res = (elap - reqDelay)?.abs()
         // log.debug "getAdjCmdDelay | reqDelay: $reqDelay | elap: $elap | res: ${res+3}"
         return res < 3 ? 3 : res+3
@@ -2125,10 +2310,11 @@ Integer getAdjCmdDelay(elap, reqDelay) {
 }
 
 def testMultiCmd() {
-    sendMultiSequenceCommand([[command: "volume", value: 60], [command: "speak", value: "super duper test message 1, 2, 3"], [command: "volume", value: 30]])
+    sendMultiSequenceCommand([[command: "volume", value: 60], [command: "speak", value: "super duper test message 1, 2, 3"], [command: "volume", value: 30]], "testMultiCmd")
 }
 
 private speakVolumeCmd(headers=[:], isQueueCmd=false) {
+    log.debug "speakVolumeCmd($headers)..."
     // if(!isQueueCmd) { log.trace "speakVolumeCmd(${headers?.cmdDesc}, $isQueueCmd)" }
     def random = new Random()
     def randCmdId = random?.nextInt(300)
@@ -2142,6 +2328,7 @@ private speakVolumeCmd(headers=[:], isQueueCmd=false) {
         return
     }
     Boolean isTTS = true
+    // headers?.message = cleanString(headers?.message)
     Integer lastTtsCmdSec = getLastTtsCmdSec()
     Integer msgLen = headers?.message?.toString()?.length()
     Integer recheckDelay = getRecheckDelay(msgLen)
@@ -2185,25 +2372,24 @@ private speakVolumeCmd(headers=[:], isQueueCmd=false) {
         logItems?.push("│ Current Volume: (${device?.currentValue("volume")}%)")
         logItems?.push("│ Command: (SpeakCommand)")
         try {
-            def bodyData = null
-            if(headerMap?.message && headerMap?.newVolume) {
-                List sqData = [[command: "volume", value: headerMap?.newVolume], [command: "speak", value: headerMap?.message]]
-                if(headerMap?.oldVolume) { sqData?.push([command: "volume", value: headerMap?.oldVolume]) }
-                bodyData = multiSequenceBuilder(sqData)
-            } else {
-                bodyData = sequenceBuilder("speak", headerMap?.message)
-            }
+            def bodyObj = null
+            List seqCmds = []
+            if(headerMap?.newVolume) { seqCmds?.push([command: "volume", value: headerMap?.newVolume]) }
+            seqCmds = seqCmds + msgSeqBuilder(headerMap?.message)
+            if(headerMap?.oldVolume) { seqCmds?.push([command: "volume", value: headerMap?.oldVolume]) }
+            bodyObj = new JsonOutput().toJson(multiSequenceBuilder(seqCmds))
+
             Map params = [
                 uri: getAmazonUrl(),
                 path: "/api/behaviors/preview",
                 headers: headerMap,
                 requestContentType: "application/json",
                 contentType: "application/json",
-                body: bodyData
+                body: bodyObj
             ]
             execAsyncCmd("post", "asyncSpeechHandler", params, [
-                cmdDt:(headerMap?.cmdDt ?: null), queueKey: (headerMap?.queueKey ?: null), cmdDesc: (headerMap?.cmdDesc ?: null), deviceId: device?.getDeviceNetworkId(), msgDelay: (headerMap?.msgDelay ?: null),
-                message: (headerMap?.message ?: null), newVolume: (headerMap?.newVolume ?: null), oldVolume: (headerMap?.oldVolume ?: null), cmdId: (headerMap?.cmdId ?: null)
+                cmdDt:(headerMap?.cmdDt ?: null), queueKey: (headerMap?.queueKey ?: null), cmdDesc: (headerMap?.cmdDesc ?: null), msgLen: msgLen, deviceId: device?.getDeviceNetworkId(), msgDelay: (headerMap?.msgDelay ?: null),
+                message: (headerMap?.message ? (isST() && msgLen > 700 ? headerMap?.message?.take(700) : headerMap?.message) : null), newVolume: (headerMap?.newVolume ?: null), oldVolume: (headerMap?.oldVolume ?: null), cmdId: (headerMap?.cmdId ?: null)
             ])
         } catch (e) {
             log.error "something went wrong: ", e
@@ -2219,16 +2405,18 @@ private speakVolumeCmd(headers=[:], isQueueCmd=false) {
 }
 
 def asyncSpeechHandler(response, data) {
+    Boolean hasErr = (response?.hasError() == true)
+    String errMsg = (hasErr && response?.getErrorMessage()) ? response?.getErrorMessage() : null
+    try {} catch (ex) { }
     def resp = null
     data["amznReqId"] = response?.headers["x-amz-rid"] ?: null
-    if(!respIsValid(response, "asyncSpeechHandler", true)){
-        resp = response?.getErrorJson() ?: null
-    } else { resp = response?.getData() ?: null }
-    try {} catch (ex) {
-        //handles non-2xx status codes
-    }
-    // log.trace "asyncSpeechHandler | Status: (${response?.getStatus()}) | Response: ${resp} | PassThru-Data: ${data}"
-    postCmdProcess(resp, response?.getStatus(), data)
+    if(!respIsValid(response?.status, hasErr, errMsg, "asyncSpeechHandler", true)) {
+    // if(!respIsValid(response, "asyncSpeechHandler", true)){
+        resp = response?.errorJson ?: null
+    } else { resp = response?.data ?: null }
+
+    // log.trace "asyncSpeechHandler | Status: (${response?.status}) | Response: ${resp} | PassThru-Data: ${data}"
+    postCmdProcess(resp, response?.status, data)
 }
 
 private postCmdProcess(resp, statusCode, data) {
@@ -2236,7 +2424,7 @@ private postCmdProcess(resp, statusCode, data) {
         if(statusCode == 200) {
             def execTime = data?.cmdDt ? (now()-data?.cmdDt) : 0
             // log.info "${data?.cmdDesc ? "${data?.cmdDesc}" : "Command"} Sent Successfully${data?.queueKey ? " | QueueKey: (${data?.queueKey})" : ""}${data?.msgDelay ? " | RecheckDelay: (${data?.msgDelay} sec)" : ""} | Execution Time (${execTime}ms)"
-            log.info "${data?.cmdDesc ? "${data?.cmdDesc}" : "Command"} Sent Successfully | Execution Time (${execTime}ms)${data?.msgDelay ? " | Recheck Wait: (${data?.msgDelay} sec)" : ""}${showLogs && data?.amznReqId ? " | Amazon Request ID: ${data?.amznReqId}" : ""}${data?.cmdId ? " | CmdID: (${data?.cmdId})" : ""}"
+            log.info "${data?.cmdDesc ? "${data?.cmdDesc}" : "Command"} Sent Successfully${data?.msgLen ? " | Length: (${data?.msgLen}) " : ""}| Execution Time (${execTime}ms)${data?.msgDelay ? " | Recheck Wait: (${data?.msgDelay} sec)" : ""}${showLogs && data?.amznReqId ? " | Amazon Request ID: ${data?.amznReqId}" : ""}${data?.cmdId ? " | CmdID: (${data?.cmdId})" : ""}"
             if(data?.queueKey) { state?.remove(data?.queueKey as String) }
             if(data?.cmdDesc && data?.cmdDesc == "SpeakCommand" && data?.message) {
                 state?.lastTtsCmdDt = getDtNow()
@@ -2251,7 +2439,6 @@ private postCmdProcess(resp, statusCode, data) {
             Integer rDelay = 2//random?.nextInt(5)
             log.warn "You've been Rate-Limited by Amazon for sending Consectutive Commands to 5+ Device... | Device will retry again in ${rDelay} seconds"
             schedQueueCheck(rDelay, true, [rateLimited: true, delay: data?.msgDelay], "postCmdProcess(Rate-Limited)")
-            // runIn(3, "processCmdQueue", [data:[rateLimited: true, delay: data?.msgDelay]])
             return
         } else {
             log.error "postCmdProcess Error | status: ${statusCode} | message: ${resp?.message}"
@@ -2376,6 +2563,7 @@ Map multiSequenceBuilder(commands, parallel=false) {
 
 Map createSequenceNode(command, value) {
     try {
+        Boolean remDevSpecifics = false
         Map seqNode = [
             "@type": "com.amazon.alexa.behaviors.model.OpaquePayloadOperationNode",
             "operationPayload": [
@@ -2385,7 +2573,7 @@ Map createSequenceNode(command, value) {
                 "customerId": state?.deviceOwnerCustomerId
             ]
         ]
-        switch (command) {
+        switch (command?.toString()?.toLowerCase()) {
             case "weather":
                 seqNode?.type = "Alexa.Weather.Play"
                 break
@@ -2401,6 +2589,9 @@ Map createSequenceNode(command, value) {
             case "goodnight":
                 seqNode?.type = "Alexa.GoodNight.Play"
                 break
+            case "cleanup":
+                seqNode?.type = "Alexa.CleanUp.Play"
+                break
             case "singasong":
                 seqNode?.type = "Alexa.SingASong.Play"
                 break
@@ -2412,9 +2603,6 @@ Map createSequenceNode(command, value) {
                 break
             case "joke":
                 seqNode?.type = "Alexa.Joke.Play"
-                break
-            case "playsearch":
-                seqNode?.type = "Alexa.Music.PlaySearchPhrase"
                 break
             case "calendartomorrow":
                 seqNode?.type = "Alexa.Calendar.PlayTomorrow"
@@ -2429,57 +2617,85 @@ Map createSequenceNode(command, value) {
                 seqNode?.type = "Alexa.DeviceControls.Stop"
                 break
             case "stopalldevices":
+                remDevSpecifics = true
                 seqNode?.type = "Alexa.DeviceControls.Stop"
-                seqNode?.operationPayload?.remove('deviceType')
-                seqNode?.operationPayload?.remove('deviceSerialNumber')
-                seqNode?.operationPayload?.remove('locale')
-                seqNode?.operationPayload?.devices = [
-                    [
-                        deviceType: "ALEXA_ALL_DEVICE_TYPE",
-                        deviceSerialNumber: "ALEXA_ALL_DSN"
-                    ]
-                ]
+                seqNode?.operationPayload?.devices = [ [deviceType: "ALEXA_ALL_DEVICE_TYPE", deviceSerialNumber: "ALEXA_ALL_DSN"] ]
                 seqNode?.operationPayload?.isAssociatedDevice = false
+                break
+            case "cannedtts_random":
+                List okVals = ["goodbye", "confirmations", "goodmorning", "compliments", "birthday", "goodnight", "iamhome"]
+                if(!(value in okVals)) { return null }
+                seqNode?.type = "Alexa.CannedTts.Speak"
+                seqNode?.operationPayload?.cannedTtsStringId = "alexa.cannedtts.speak.curatedtts-category-${value}/alexa.cannedtts.speak.curatedtts-random"
+                break
+            case "cannedtts":
+                List okVals = ["goodbye", "confirmations", "goodmorning", "compliments", "birthday", "goodnight", "iamhome"]
+                if(!(value in okVals)) { return null }
+                seqNode?.type = "Alexa.CannedTts.Speak"
+                List valObj = (value?.toString()?.contains("::")) ? value?.split("::") : [value as String, value as String]
+                seqNode?.operationPayload?.cannedTtsStringId = "alexa.cannedtts.speak.curatedtts-category-${valObj[0]}/alexa.cannedtts.speak.curatedtts-${valObj[1]}"
+                break
+            case "wait":
+                remDevSpecifics = true
+                seqNode?.operationPayload?.remove('customerId')
+                seqNode?.type = "Alexa.System.Wait"
+                seqNode?.operationPayload?.waitTimeInSeconds = value?.toInteger() ?: 5
                 break
             case "volume":
                 seqNode?.type = "Alexa.DeviceControls.Volume"
                 seqNode?.operationPayload?.value = value;
                 break
+            case "dnd_duration":
+            case "dnd_time":
+                remDevSpecifics = true
+                seqNode?.type = "Alexa.DeviceControls.DoNotDisturb"
+                seqNode?.operationPayload?.devices = [ [deviceAccountId: state?.deviceAccountId, deviceType: state?.deviceType, deviceSerialNumber: state?.serialNumber] ]
+                seqNode?.operationPayload?.action = "Enable"
+                if(command == "dnd_time") {
+                    seqNode?.operationPayload?.until = "TIME#T${value}"
+                } else { seqNode?.operationPayload?.duration = "DURATION#PT${value}" }
+                seqNode?.operationPayload?.timeZoneId = "America/New_York" //location?.timeZone?.ID ?: null
+                break
+            case "dnd_all_duration":
+            case "dnd_all_time":
+                remDevSpecifics = true
+                seqNode?.type = "Alexa.DeviceControls.DoNotDisturb"
+                seqNode?.operationPayload?.devices = [ [deviceType: "ALEXA_ALL_DEVICE_TYPE", deviceSerialNumber: "ALEXA_ALL_DSN"] ]
+                seqNode?.operationPayload?.action = "Enable"
+                if(command == "dnd_all_time") {
+                    seqNode?.operationPayload?.until = "TIME#T${value}"
+                } else { seqNode?.operationPayload?.duration = "DURATION#PT${value}" }
+                seqNode?.operationPayload?.timeZoneId = "America/New_York" //location?.timeZone?.ID ?: null
+                break
             case "speak":
                 seqNode?.type = "Alexa.Speak"
+                value = cleanString(value as String)
                 seqNode?.operationPayload?.textToSpeak = value as String
                 break
             case "announcement":
             case "announcementall":
+                remDevSpecifics = true
                 seqNode?.type = "AlexaAnnouncement"
-                seqNode?.operationPayload?.remove('deviceType')
-                seqNode?.operationPayload?.remove('deviceSerialNumber')
-                seqNode?.operationPayload?.remove('locale')
                 seqNode?.operationPayload?.expireAfter = "PT5S"
                 List valObj = (value?.toString()?.contains("::")) ? value?.split("::") : ["Echo Speaks", value as String]
-                seqNode?.operationPayload?.content = [[
-                    locale: (state?.regionLocale ?: "en-US"),
-                    display: [ title: valObj[0], body: valObj[1] as String ],
-                    speak: [ type: "text", value: valObj[1] as String ],
-                ]]
+                seqNode?.operationPayload?.content = [[ locale: (state?.regionLocale ?: "en-US"), display: [ title: valObj[0], body: valObj[1] as String ], speak: [ type: "text", value: valObj[1] as String ] ] ]
                 seqNode?.operationPayload?.target = [ customerId : state?.deviceOwnerCustomerId ]
                 if(command != "announcementall") { seqNode?.operationPayload?.target?.devices = [ [ deviceTypeId: state?.deviceType, deviceSerialNumber: state?.serialNumber ] ] }
                 break
-            case "welcomehomerandom":
-                seqNode?.type = "Alexa.CannedTts.Speak"
-                seqNode?.operationPayload?.cannedTtsStringId = "alexa.cannedtts.speak.curatedtts-category-iamhome/alexa.cannedtts.speak.curatedtts-random"
-                break
             case "pushnotification":
+                remDevSpecifics = true
                 seqNode?.type = "Alexa.Notifications.SendMobilePush"
-                seqNode?.operationPayload?.remove('deviceType')
-                seqNode?.operationPayload?.remove('deviceSerialNumber')
-                seqNode?.operationPayload?.remove('locale')
                 seqNode?.operationPayload?.notificationMessage = value as String
                 seqNode?.operationPayload?.alexaUrl = "#v2/behaviors"
                 seqNode?.operationPayload?.title = "Amazon Alexa"
                 break
             default:
-                return
+                return null
+        }
+        if(remDevSpecifics) {
+            seqNode?.operationPayload?.remove('deviceType')
+            seqNode?.operationPayload?.remove('deviceSerialNumber')
+            seqNode?.operationPayload?.remove('locale')
         }
         // log.debug "seqNode: $seqNode"
         return seqNode
@@ -2488,4 +2704,3 @@ Map createSequenceNode(command, value) {
         return [:]
     }
 }
-
